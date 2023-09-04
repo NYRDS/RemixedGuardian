@@ -1,7 +1,9 @@
 import asyncio
 import datetime
 
-from conf import BOT_TOKEN
+from emoji import emojize
+
+from conf import BOT_TOKEN, CHANNEL_GENERAL
 from langdetect import detect
 
 import discord
@@ -25,6 +27,9 @@ def lang(arg):
     return ret
 
 
+strikes = {}
+
+
 class MyClient(discord.Client):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -32,22 +37,43 @@ class MyClient(discord.Client):
 
     async def setup_hook(self) -> None:
         # start the task to run in the background
-        self.my_background_task.start()
+        # self.my_background_task.start()
+        pass
+
+    async def on_message(self, message):
+        print(message)
+        if message.channel.id != CHANNEL_GENERAL:
+            if not message.author.bot:
+                await message.add_reaction(emojize(":eye:"))
+
+            if lang(message.content) != "en":
+                if not message.author.bot:
+                    if message.author.id not in strikes:
+                        strikes[message.author.id] = 0
+
+                    strikes[message.author.id] += 1
+
+                    if strikes[message.author.id] >= 5:
+                        await message.delete(delay=2)
+                    else:
+                        await message.channel.send(
+                            "Please use only English in this channel", reference=message
+                        )
 
     async def on_ready(self):
         print(f"Logged in as {self.user} (ID: {self.user.id})")
 
-    @tasks.loop(seconds=20)  # task runs every 60 seconds
+    @tasks.loop(seconds=120)  # task runs every 60 seconds
     async def my_background_task(self):
         print(f"Exterminatus!")
         channel = client.get_channel(
-            643581763247013911
+            CHANNEL_GENERAL
         )  # A channel ID must be entered here
 
         messages = [
             i
             async for i in channel.history(
-                after=self.purge_start, before=datetime.datetime.now(), limit=5
+                after=self.purge_start, before=datetime.datetime.now(), limit=50
             )
         ]
         print(len(messages))
@@ -55,8 +81,9 @@ class MyClient(discord.Client):
             print(message.created_at, message.content, lang(message.content), sep="\n")
             if message.created_at.replace(tzinfo=None) > self.purge_start:
                 if lang(message.content) != "en":
-                    await asyncio.sleep(2)
-                    await message.delete()
+                    print("non-english, deleting")
+                    await message.delete(delay=2)
+                    print("done")
 
             self.purge_start = message.created_at.replace(tzinfo=None)
         print("Sleep")
