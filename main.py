@@ -1,6 +1,7 @@
 import asyncio
 import datetime
 
+from discord import MessageType
 from emoji import emojize
 
 from conf import BOT_TOKEN, CHANNEL_GENERAL
@@ -42,7 +43,10 @@ class MyClient(discord.Client):
 
     async def on_message(self, message):
         print(message)
-        if message.channel.id == CHANNEL_GENERAL:
+        if (
+            message.channel.id == CHANNEL_GENERAL
+            and message.type == MessageType.default
+        ):
             if not message.author.bot:
                 await message.add_reaction(emojize(":eye:"))
 
