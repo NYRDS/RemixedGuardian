@@ -58,7 +58,7 @@ class MyClient(discord.Client):
                     await asyncio.sleep(2)
                     await message.delete()
 
-            self.purge_start - message.created_at.replace(tzinfo=None)
+            self.purge_start = message.created_at.replace(tzinfo=None)
         print("Sleep")
 
     @my_background_task.before_loop
