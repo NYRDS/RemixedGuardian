@@ -1,40 +1,60 @@
 import asyncio
 import datetime
 
+import contractions
 from discord import MessageType
-from emoji import emojize
+from emoji import emojize, replace_emoji
+from ftlangdetect import detect
 
 from conf import BOT_TOKEN, CHANNEL_GENERAL
-from langdetect import detect
 
 import discord
 from discord.ext import tasks
+
+from utils import floodScore
+import pylru
 
 
 def lang(arg):
     if arg is None:
         return None
-
-    for_detect = (
-        arg.replace("%d", "").replace("%s", "").replace("%1$s", "").replace("%2$s", "")
-    )
-    from langdetect.lang_detect_exception import LangDetectException
-
-    ret = None
-    try:
-        ret = detect(for_detect)
-    except LangDetectException as e:
-        print(arg, "->", e)
-    return ret
+    arg = arg.replace("\n", " ")
+    ret = detect(text=arg, low_memory=True)
+    return ret["lang"]
 
 
 strikes = {}
+authors = {}
+
+
+def isGoodMessage(text: str, author: str):
+    if author not in authors:
+        authors[author] = pylru.lrucache(128)
+
+    if text not in authors[author]:
+        authors[author][text] = 0
+
+    authors[author][text] += 1
+
+    if authors[author][text] >= 3:
+        return False, "Please don't spam this!"
+
+    text = replace_emoji(text)
+    text = contractions.fix(text)
+
+    if floodScore(text) >= 30:
+        return False, "Please don't flood!"
+
+    if lang(text) != "en":
+        return False, "Please use only English here!"
+
+    return True, ""
 
 
 class MyClient(discord.Client):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.purge_start = datetime.datetime(year=2023, month=6, day=18)
+        self.purge_start = datetime.datetime(year=2023, month=9, day=1)
 
     async def setup_hook(self) -> None:
         # start the task to run in the background
@@ -43,26 +63,27 @@ class MyClient(discord.Client):
 
     async def on_message(self, message):
         print(message)
-        if (
-            message.channel.id == CHANNEL_GENERAL
-            and message.type == MessageType.default
-        ):
+        print(message.content)
+        if message.channel.id == CHANNEL_GENERAL and message.type in [
+            MessageType.default,
+            MessageType.reply,
+        ]:
             if not message.author.bot:
                 await message.add_reaction(emojize(":eye:"))
 
-            if lang(message.content) != "en":
-                if not message.author.bot:
-                    if message.author.id not in strikes:
-                        strikes[message.author.id] = 0
+            good, reason = isGoodMessage(message.content, message.author.name)
+            if good:
+                return
 
-                    strikes[message.author.id] += 1
+            if message.author.id not in strikes:
+                strikes[message.author.id] = 0
 
-                    if strikes[message.author.id] >= 5:
-                        await message.delete(delay=2)
-                    else:
-                        await message.channel.send(
-                            "Please use only English in this channel", reference=message
-                        )
+            strikes[message.author.id] += 1
+
+            if strikes[message.author.id] >= 5:
+                await message.delete(delay=2)
+            else:
+                await message.channel.send(reason, reference=message)
 
     async def on_ready(self):
         print(f"Logged in as {self.user} (ID: {self.user.id})")
@@ -84,10 +105,14 @@ class MyClient(discord.Client):
         for message in messages:
             print(message.created_at, message.content, lang(message.content), sep="\n")
             if message.created_at.replace(tzinfo=None) > self.purge_start:
-                if lang(message.content) != "en":
-                    print("non-english, deleting")
-                    await message.delete(delay=2)
-                    print("done")
+                good, reason = isGoodMessage(message.content, message.author.name)
+                if good:
+                    continue
+
+                print(f"{reason}, deleting")
+                await asyncio.sleep(2)
+                await message.delete(delay=2)
+                print("done")
 
             self.purge_start = message.created_at.replace(tzinfo=None)
         print("Sleep")
