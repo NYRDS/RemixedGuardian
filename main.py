@@ -71,19 +71,19 @@ class MyClient(discord.Client):
             if not message.author.bot:
                 await message.add_reaction(emojize(":eye:"))
 
-            good, reason = isGoodMessage(message.content, message.author.name)
-            if good:
-                return
+                good, reason = isGoodMessage(message.content, message.author.name)
+                if good:
+                    return
 
-            if message.author.id not in strikes:
-                strikes[message.author.id] = 0
+                if message.author.id not in strikes:
+                    strikes[message.author.id] = 0
 
-            strikes[message.author.id] += 1
+                strikes[message.author.id] += 1
 
-            if strikes[message.author.id] >= 5:
-                await message.delete(delay=2)
-            else:
-                await message.channel.send(reason, reference=message)
+                if strikes[message.author.id] >= 5:
+                    await message.delete(delay=2)
+                else:
+                    await message.channel.send(reason, reference=message)
 
     async def on_ready(self):
         print(f"Logged in as {self.user} (ID: {self.user.id})")
