@@ -1,5 +1,6 @@
 import asyncio
 import datetime
+import signal
 
 import contractions
 from discord import MessageType
@@ -13,6 +14,7 @@ from discord.ext import tasks
 
 from utils import floodScore
 import pylru
+import shelve
 
 
 def lang(arg):
@@ -23,8 +25,16 @@ def lang(arg):
     return ret["lang"]
 
 
-strikes = {}
+strikes = shelve.open("strikes")
 authors = {}
+
+
+def signal_handler(signal, frame):
+    strikes.close()
+    exit(0)
+
+
+signal.signal(signal.SIGINT, signal_handler)
 
 
 def isGoodMessage(text: str, author: str):
@@ -58,7 +68,7 @@ class MyClient(discord.Client):
 
     async def setup_hook(self) -> None:
         # start the task to run in the background
-        # self.my_background_task.start()
+        self.my_background_task.start()
         pass
 
     async def on_message(self, message):
@@ -69,9 +79,11 @@ class MyClient(discord.Client):
             MessageType.reply,
         ]:
             if not message.author.bot:
-                await message.add_reaction(emojize(":eye:"))
+                author = message.author.name
+                if author in strikes:
+                    await message.add_reaction(emojize(":eye:"))
 
-                good, reason = isGoodMessage(message.content, message.author.name)
+                good, reason = isGoodMessage(message.content, author)
                 if good:
                     return
 
@@ -101,7 +113,7 @@ class MyClient(discord.Client):
                 after=self.purge_start, before=datetime.datetime.now(), limit=50
             )
         ]
-        print(len(messages))
+        print("processing: ", len(messages))
         for message in messages:
             print(message.created_at, message.content, lang(message.content), sep="\n")
             if message.created_at.replace(tzinfo=None) > self.purge_start:
