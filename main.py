@@ -100,7 +100,7 @@ class MyClient(discord.Client):
     async def on_ready(self):
         print(f"Logged in as {self.user} (ID: {self.user.id})")
 
-    @tasks.loop(seconds=120)  # task runs every 60 seconds
+    @tasks.loop(seconds=3600 * 24)  # task runs every 60 seconds
     async def my_background_task(self):
         print(f"Exterminatus!")
         channel = client.get_channel(
