@@ -3,3 +3,5 @@ emoji==2.8.0
 contractions
 fasttext-langdetect
 pylru
+google-auth
+google-api-python-client
