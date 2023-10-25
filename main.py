@@ -7,11 +7,18 @@ from discord import MessageType
 from emoji import emojize, replace_emoji
 from ftlangdetect import detect
 
-from conf import BOT_TOKEN, CHANNEL_GENERAL
+from conf import (
+    BOT_TOKEN,
+    CHANNEL_GENERAL,
+    CHANNEL_ANN,
+    CHANNEL_REVIEWS,
+    GOOGLE_PLAY_ADMINS,
+)
 
 import discord
 from discord.ext import tasks
 
+from google_play import async_publish_fresh_reviews, async_publish_reply
 from utils import floodScore
 import pylru
 import shelve
@@ -69,17 +76,29 @@ class MyClient(discord.Client):
     async def setup_hook(self) -> None:
         # start the task to run in the background
         # self.my_background_task.start()
+        self.reviews_task.start()
         pass
 
     async def on_message(self, message):
         print(message)
         print(message.content)
+        print(message.reference)
+
+        if message.channel.id == CHANNEL_REVIEWS and message.type in [
+            MessageType.reply
+        ]:
+            if (
+                message.reference is not None
+                and message.author.id in GOOGLE_PLAY_ADMINS
+            ):
+                await async_publish_reply(message.reference.message_id, message.content)
+
         if message.channel.id == CHANNEL_GENERAL and message.type in [
             MessageType.default,
             MessageType.reply,
         ]:
             if not message.author.bot:
-                author = message.author.name
+                author = str(message.author.id)
                 if author in strikes:
                     await message.add_reaction(emojize(":eye:"))
 
@@ -87,12 +106,12 @@ class MyClient(discord.Client):
                 if good:
                     return
 
-                if message.author.id not in strikes:
-                    strikes[message.author.id] = 0
+                if author not in strikes:
+                    strikes[author] = 0
 
-                strikes[message.author.id] += 1
+                strikes[author] += 1
 
-                if strikes[message.author.id] >= 5:
+                if strikes[author] >= 5:
                     await message.delete(delay=2)
                 else:
                     await message.channel.send(reason, reference=message)
@@ -100,12 +119,18 @@ class MyClient(discord.Client):
     async def on_ready(self):
         print(f"Logged in as {self.user} (ID: {self.user.id})")
 
+    @tasks.loop(seconds=1200)
+    async def reviews_task(self):
+        await self.wait_until_ready()  # wait until the bot logs in
+        channel = client.get_channel(CHANNEL_REVIEWS)
+        await async_publish_fresh_reviews(channel)
+
+    # task runs every 60 seconds
     @tasks.loop(seconds=120)  # task runs every 60 seconds
     async def my_background_task(self):
+        await self.wait_until_ready()
         print(f"Exterminatus!")
-        channel = client.get_channel(
-            CHANNEL_GENERAL
-        )  # A channel ID must be entered here
+        channel = client.get_channel(CHANNEL_GENERAL)
 
         messages = [
             i
@@ -128,10 +153,6 @@ class MyClient(discord.Client):
 
             self.purge_start = message.created_at.replace(tzinfo=None)
         print("Sleep")
-
-    @my_background_task.before_loop
-    async def before_my_task(self):
-        await self.wait_until_ready()  # wait until the bot logs in
 
 
 intent = discord.Intents.all()
