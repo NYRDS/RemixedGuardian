@@ -5,7 +5,7 @@ from conf import MONITORED_REPOS
 
 
 def read_commit_log(repo, local_path, on_new_commit):
-    os.system(f"cd {local_path} && git log --oneline > commit_log.txt")
+    os.system(f"cd {local_path} && git log --all --oneline > commit_log.txt")
 
     with open(f"{local_path}/commit_log.txt", "r") as f:
         with shelve.open(f"{local_path}/commit_log") as db:

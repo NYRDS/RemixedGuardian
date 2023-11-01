@@ -134,12 +134,13 @@ class RemixedGuardian(discord.Client):
         await self.wait_until_ready()  # wait until the bot logs in
 
         def on_new_commit(repo, msg):
-            asyncio.ensure_future(
-                client.get_channel(CHANNEL_GIT_MONITOR).send(
+            async def _on_new_commit():
+                await client.get_channel(CHANNEL_GIT_MONITOR).send(
                     f"New commit detected in {repo}: {msg}"
                 )
-            )
-            asyncio.ensure_future(asyncio.sleep(500))
+                await asyncio.sleep(0.5)
+
+            asyncio.ensure_future(_on_new_commit())
 
         check_repos(on_new_commit)
 
