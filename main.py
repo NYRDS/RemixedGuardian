@@ -138,7 +138,7 @@ class RemixedGuardian(discord.Client):
                 await client.get_channel(CHANNEL_GIT_MONITOR).send(
                     f"New commit detected in {repo}: {msg}"
                 )
-                await asyncio.sleep(0.5)
+                await asyncio.sleep(2)
 
             asyncio.ensure_future(_on_new_commit())
 
