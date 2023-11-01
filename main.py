@@ -1,6 +1,7 @@
 import asyncio
 import datetime
 import signal
+import time
 
 import contractions
 from discord import MessageType
@@ -13,12 +14,14 @@ from conf import (
     CHANNEL_ANN,
     CHANNEL_REVIEWS,
     GOOGLE_PLAY_ADMINS,
+    CHANNEL_GIT_MONITOR,
 )
 
 import discord
 from discord.ext import tasks
 
 from google_play import async_publish_fresh_reviews, async_publish_reply
+from repo_monitor import check_repos
 from utils import floodScore
 import pylru
 import shelve
@@ -68,7 +71,7 @@ def isGoodMessage(text: str, author: str):
     return True, ""
 
 
-class MyClient(discord.Client):
+class RemixedGuardian(discord.Client):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.purge_start = datetime.datetime(year=2023, month=9, day=1)
@@ -77,6 +80,7 @@ class MyClient(discord.Client):
         # start the task to run in the background
         # self.my_background_task.start()
         self.reviews_task.start()
+        self.git_monitor_task.start()
         pass
 
     async def on_message(self, message):
@@ -125,9 +129,23 @@ class MyClient(discord.Client):
         channel = client.get_channel(CHANNEL_REVIEWS)
         await async_publish_fresh_reviews(channel)
 
+    @tasks.loop(seconds=1537)
+    async def git_monitor_task(self):
+        await self.wait_until_ready()  # wait until the bot logs in
+
+        def on_new_commit(repo, msg):
+            asyncio.ensure_future(
+                client.get_channel(CHANNEL_GIT_MONITOR).send(
+                    f"New commit detected in {repo}: {msg}"
+                )
+            )
+            asyncio.ensure_future(asyncio.sleep(500))
+
+        check_repos(on_new_commit)
+
     # task runs every 60 seconds
     @tasks.loop(seconds=120)  # task runs every 60 seconds
-    async def my_background_task(self):
+    async def exterminatus(self):
         await self.wait_until_ready()
         print(f"Exterminatus!")
         channel = client.get_channel(CHANNEL_GENERAL)
@@ -156,6 +174,6 @@ class MyClient(discord.Client):
 
 
 intent = discord.Intents.all()
-client = MyClient(intents=intent)
+client = RemixedGuardian(intents=intent)
 
 client.run(BOT_TOKEN)
