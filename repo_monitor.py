@@ -15,7 +15,6 @@ def read_commit_log(repo, local_path, on_new_commit):
                 if key not in db:
                     db[key] = value
                     on_new_commit(repo, value)
-                    return
 
 
 def check_repos(on_new_commit):
@@ -27,8 +26,8 @@ def check_repos(on_new_commit):
             read_commit_log(repo, local_path, lambda *args: None)
 
         os.system(f"cd {local_path} && git fetch --filter=blob:none")
-
         read_commit_log(repo, local_path, on_new_commit)
 
 
-check_repos(print)
+if __name__ == "__main__":
+    check_repos(print)
