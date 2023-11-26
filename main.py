@@ -103,8 +103,8 @@ class RemixedGuardian(discord.Client):
         ]:
             if not message.author.bot:
                 author = str(message.author.id)
-                if author in strikes:
-                    await message.add_reaction(emojize(":eye:"))
+                # if author in strikes:
+                #    await message.add_reaction(emojize(":eye:"))
 
                 good, reason = isGoodMessage(message.content, author)
                 if good:
