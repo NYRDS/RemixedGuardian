@@ -47,7 +47,28 @@ def signal_handler(signal, frame):
 signal.signal(signal.SIGINT, signal_handler)
 
 
-def isGoodMessage(text: str, author: str):
+def isGoodMessageForAny(text: str, author: str):
+    if author not in authors:
+        authors[author] = pylru.lrucache(128)
+
+    if text not in authors[author]:
+        authors[author][text] = 0
+
+    authors[author][text] += 1
+
+    if authors[author][text] >= 3:
+        return False, "Please don't spam this!"
+
+    text = replace_emoji(text)
+    text = contractions.fix(text)
+
+    if floodScore(text) >= 50:
+        return False, "Please don't flood!"
+
+    return True, ""
+
+
+def isGoodMessageForGeneral(text: str, author: str):
     if author not in authors:
         authors[author] = pylru.lrucache(128)
 
@@ -84,9 +105,9 @@ class RemixedGuardian(discord.Client):
         pass
 
     async def on_message(self, message):
-        print(message)
+        # print(message)
         print(message.content)
-        print(message.reference)
+        # print(message.reference)
 
         if message.channel.id == CHANNEL_REVIEWS and message.type in [
             MessageType.reply
@@ -96,29 +117,34 @@ class RemixedGuardian(discord.Client):
                 and message.author.id in GOOGLE_PLAY_ADMINS
             ):
                 await async_publish_reply(message.reference.message_id, message.content)
+                return
 
-        if message.channel.id == CHANNEL_GENERAL and message.type in [
-            MessageType.default,
-            MessageType.reply,
-        ]:
-            if not message.author.bot:
-                author = str(message.author.id)
-                # if author in strikes:
-                #    await message.add_reaction(emojize(":eye:"))
+        if message.type in [MessageType.default, MessageType.reply]:
+            author = str(message.author.id)
+            reason = ""
 
-                good, reason = isGoodMessage(message.content, author)
+            if message.channel.id == CHANNEL_GENERAL:
+                if not message.author.bot:
+                    good, reason = isGoodMessageForGeneral(message.content, author)
+                    if good:
+                        # print("Good, general")
+                        return
+            else:
+                good, reason = isGoodMessageForAny(message.content, author)
                 if good:
+                    # print("Good, any")
                     return
 
-                if author not in strikes:
-                    strikes[author] = 0
+            if author not in strikes:
+                strikes[author] = 0
 
-                strikes[author] += 1
+            # print("Bad", author, strikes[author])
+            strikes[author] += 1
 
-                if strikes[author] >= 5:
-                    await message.delete(delay=2)
-                else:
-                    await message.channel.send(reason, reference=message)
+            if strikes[author] >= 5:
+                await message.delete(delay=2)
+            else:
+                await message.channel.send(reason, reference=message)
 
     async def on_ready(self):
         print(f"Logged in as {self.user} (ID: {self.user.id})")
@@ -138,7 +164,7 @@ class RemixedGuardian(discord.Client):
                 await client.get_channel(CHANNEL_GIT_MONITOR).send(
                     f"New commit detected in {repo}: {msg}"
                 )
-                await asyncio.sleep(2)
+                await asyncio.sleep(5)
 
             asyncio.ensure_future(_on_new_commit())
 
@@ -161,7 +187,9 @@ class RemixedGuardian(discord.Client):
         for message in messages:
             print(message.created_at, message.content, lang(message.content), sep="\n")
             if message.created_at.replace(tzinfo=None) > self.purge_start:
-                good, reason = isGoodMessage(message.content, message.author.name)
+                good, reason = isGoodMessageForGeneral(
+                    message.content, message.author.name
+                )
                 if good:
                     continue
 
