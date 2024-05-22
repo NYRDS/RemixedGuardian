@@ -37,6 +37,7 @@ def lang(arg):
 
 strikes = shelve.open("strikes")
 authors = {}
+messages = {}
 
 
 def signal_handler(signal, frame):
@@ -106,8 +107,10 @@ class RemixedGuardian(discord.Client):
 
     async def on_message(self, message):
         # print(message)
-        print(message.content)
-        # print(message.reference)
+
+        filenames = " ".join([a.filename for a in message.attachments])
+        content_to_check = message.content + " " + filenames
+        print(content_to_check)
 
         if message.channel.id == CHANNEL_REVIEWS and message.type in [
             MessageType.reply
@@ -125,12 +128,12 @@ class RemixedGuardian(discord.Client):
 
             if message.channel.id == CHANNEL_GENERAL:
                 if not message.author.bot:
-                    good, reason = isGoodMessageForGeneral(message.content, author)
+                    good, reason = isGoodMessageForGeneral(content_to_check, author)
                     if good:
                         # print("Good, general")
                         return
             else:
-                good, reason = isGoodMessageForAny(message.content, author)
+                good, reason = isGoodMessageForAny(content_to_check, author)
                 if good:
                     # print("Good, any")
                     return
@@ -164,7 +167,7 @@ class RemixedGuardian(discord.Client):
                 await client.get_channel(CHANNEL_GIT_MONITOR).send(
                     f"New commit detected in {repo}: {msg}"
                 )
-                await asyncio.sleep(5)
+                await asyncio.sleep(10)
 
             asyncio.ensure_future(_on_new_commit())
 

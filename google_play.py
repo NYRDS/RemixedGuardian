@@ -25,27 +25,32 @@ def get_service():
 async def async_publish_fresh_reviews(channel=None):
     print("Publishing fresh reviews...")
 
-    service = get_service()
-
     # Retrieve the reviews list for the app
-    reviews = (
-        service.reviews()
-        .list(packageName=GOOGLE_PLAY_PACKAGE_NAME, translationLanguage="en")
-        .execute()
-    )
+    try:
+        service = get_service()
+        reviews = (
+            service.reviews()
+            .list(packageName=GOOGLE_PLAY_PACKAGE_NAME, translationLanguage="en")
+            .execute()
+        )
 
-    for review in reviews["reviews"]:
-        if review["reviewId"] not in reviews_db:
-            stars = review["comments"][0]["userComment"]["starRating"]
-            text = f"{review['authorName']}: {emojize(':star:'*stars)}\n {review['comments'][0]['userComment']['text']}"
-            if "originalText" in review["comments"][0]["userComment"]:
-                text += f"\n\n{review['comments'][0]['userComment']['originalText']}"
+        for review in reviews["reviews"]:
+            if review["reviewId"] not in reviews_db:
+                stars = review["comments"][0]["userComment"]["starRating"]
+                text = f"{review['authorName']}: {emojize(':star:'*stars)}\n {review['comments'][0]['userComment']['text']}"
+                if "originalText" in review["comments"][0]["userComment"]:
+                    text += (
+                        f"\n\n{review['comments'][0]['userComment']['originalText']}"
+                    )
 
-            if channel is not None:
-                reviews_db[review["reviewId"]] = review
-                res = await channel.send(content=text)
-                reviews_db[str(res.id)] = review["reviewId"]
-                return
+                if channel is not None:
+                    reviews_db[review["reviewId"]] = review
+                    res = await channel.send(content=text)
+                    reviews_db[str(res.id)] = review["reviewId"]
+                    return
+
+    except Exception as e:
+        print(e)
 
 
 async def async_publish_reply(msg_id, replyMsg: str):
