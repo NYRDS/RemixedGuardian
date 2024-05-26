@@ -7,7 +7,9 @@ def floodScore(s: str) -> int:
         stats[word] = stats.get(word, 0) + 1
 
     for k, v in stats.items():
-        if v >= 10:
+        if v >= len(words) / 10:
             score += v
+        else:
+            score -= v
 
     return score
