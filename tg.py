@@ -5,13 +5,13 @@ import json
 import logging
 import traceback
 
-from aiogram import Bot, Dispatcher, types, enums, Router
+from aiogram import Bot, Dispatcher, Router
 from aiogram.dispatcher import router
 from aiogram.types import Message
-from aiogram.filters import BaseFilter, CommandStart
 
 from cerebras_test import cerebras_chat
 from conf import TG_API_TOKEN
+from state.session import ensure_session, HISTORY, Session
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -35,11 +35,18 @@ async def echo_handler(message: Message) -> None:
 
         text = message.text
 
-        reply = cerebras_chat(text, username, [])
+        session = ensure_session(message.reply_to_message.forum_topic_created.name)
+        session.user_text(text, username)
+        reply = cerebras_chat(session.make_prompt())
+
+        session.llm_text(reply)
+
 
         await message.reply(reply)
     except Exception:
         traceback.print_tb()
+
+
 
 
 async def main() -> None:

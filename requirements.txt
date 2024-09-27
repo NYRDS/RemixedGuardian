@@ -1,9 +1,10 @@
 discord.py==2.3.2
 emoji==2.8.0
-syncasync
+cerebras-cloud-sdk
 aiogram
 contractions
 fasttext-langdetect
 pylru
 google-auth
 google-api-python-client
+httpx_socks
