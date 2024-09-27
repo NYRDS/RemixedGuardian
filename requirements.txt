@@ -1,5 +1,7 @@
 discord.py==2.3.2
 emoji==2.8.0
+syncasync
+aiogram
 contractions
 fasttext-langdetect
 pylru
