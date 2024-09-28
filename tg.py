@@ -30,23 +30,21 @@ async def echo_handler(message: Message) -> None:
     try:
         username = message.from_user.username
 
-        if message.reply_to_message.forum_topic_created.name != "sandbox":
-            return
+        if (
+            message.chat.id == -1001885182552 and message.chat.type == "supergroup"
+        ):  # Remixed Dungeon sandbox
+            text = message.text
 
-        text = message.text
+            session = ensure_session(str(message.chat.id))
+            session.user_text(text, username)
+            reply = cerebras_chat(session.make_prompt())
 
-        session = ensure_session(message.reply_to_message.forum_topic_created.name)
-        session.user_text(text, username)
-        reply = cerebras_chat(session.make_prompt())
-
-        session.llm_text(reply)
-
+            session.llm_text(reply)
+            session.save()
 
         await message.reply(reply)
     except Exception:
-        traceback.print_tb()
-
-
+        traceback.print_exc()
 
 
 async def main() -> None:
