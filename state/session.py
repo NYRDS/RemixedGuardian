@@ -1,4 +1,5 @@
 import json
+import string
 
 from state.ai_person import makeRatKing
 
@@ -41,9 +42,13 @@ class Session:
         with open(self.filename(), "r") as f:
             self.data = json.load(f)
 
+    def turn_template(self, name) -> str:
+        if ai.lang == "ru":
+            return f"Ход {name}:"
+
     def turn_string(self, name, text) -> str:
         if ai.lang == "ru":
-            return f"ход {name}: {text}"
+            return f"{self.turn_template(name)} {text}"
 
     def user_text(self, user_text: str, user_name: str):
         self.data[HISTORY].append(
@@ -51,8 +56,15 @@ class Session:
         )
 
     def llm_text(self, llm_text: str):
+        llm_text = self.clean_llm_reply(llm_text)
+
         self.data[HISTORY].append(
             {ROLE: "assistant", CONTENT: self.turn_string(ai.name, llm_text)}
+        )
+
+    def clean_llm_reply(self, llm_text):
+        return llm_text.replace(self.turn_template(ai.name), "").strip(
+            string.whitespace
         )
 
     def get_history(self) -> list[dict[str, str]]:
@@ -74,6 +86,9 @@ class Session:
         print(ret)
 
         return ret
+
+    def llm_reply(self) -> str:
+        return self.clean_llm_reply(self.data[HISTORY][-1][CONTENT])
 
     def filename(self):
         return f"data/sessions/{self.data['uid']}.json"
