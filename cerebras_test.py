@@ -1,15 +1,24 @@
 import httpx
 from cerebras.cloud.sdk import Cerebras
-from conf import CEREBRAS_API_KEY
+
+from conf import CEREBRAS_API_KEY, USE_PROXY
 from httpx_socks import SyncProxyTransport
 
-transport = SyncProxyTransport.from_url("socks5://user:password@192.168.55.45:61125")
-http_client = httpx.Client(transport=transport)
+client = None
 
-client = Cerebras(
-    api_key=CEREBRAS_API_KEY,
-    http_client=http_client,
-)
+if USE_PROXY:
+    transport = SyncProxyTransport.from_url(
+        "socks5://user:password@192.168.55.45:61125"
+    )
+    http_client = httpx.Client(transport=transport)
+
+    client = Cerebras(
+        api_key=CEREBRAS_API_KEY,
+        http_client=http_client,
+    )
+else:
+    client = Cerebras(api_key=CEREBRAS_API_KEY)
+
 
 def cerebras_chat(prompt):
     completion_create_response = client.chat.completions.create(
