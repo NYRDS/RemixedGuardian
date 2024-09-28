@@ -44,7 +44,7 @@ async def echo_handler(message: Message) -> None:
             session.llm_text(reply)
             session.save()
 
-        await message.reply(session.llm_reply())
+            await message.reply(session.llm_reply())
     except Exception:
         traceback.print_exc()
 
