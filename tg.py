@@ -33,8 +33,8 @@ async def echo_handler(message: Message) -> None:
             username = message.from_user.first_name
 
         if (
-            True
-            or message.chat.id == -1001885182552
+            # True or
+            message.chat.id == -1001885182552
             and message.chat.type == "supergroup"
             and message.message_thread_id == 4521
         ):  # Remixed Dungeon sandbox
@@ -44,7 +44,9 @@ async def echo_handler(message: Message) -> None:
             session.user_text(text, username)
 
             check_reply = cerebras_chat(session.make_user_input_check_prompt())
-            if not check_reply.strip().lower().startswith("да"):
+            if not check_reply.strip().lower().startswith(
+                "да"
+            ) and not check_reply.strip().lower().endswith("да."):
                 session.pop_user_text()
                 await message.reply(check_reply)
                 return
@@ -54,6 +56,7 @@ async def echo_handler(message: Message) -> None:
             session.llm_text(reply)
 
             updated_params = cerebras_chat(session.make_params_update_prompt())
+            updated_params = session.clean_llm_reply(updated_params)
             session.params_updated(updated_params)
 
             session.save()

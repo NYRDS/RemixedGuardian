@@ -1,4 +1,5 @@
 import json
+import re
 import string
 from pyexpat.errors import messages
 
@@ -70,9 +71,10 @@ class Session:
         )
 
     def clean_llm_reply(self, llm_text):
-        return llm_text.replace(self.turn_template(ai.name), "").strip(
-            string.whitespace
-        )
+        return re.sub(r"Ход.*?:", "", llm_text).strip(string.whitespace)
+        # return llm_text.replace(self.turn_template(ai.name), "").strip(
+        #     string.whitespace
+        # )
 
     def get_history(self) -> list[dict[str, str]]:
         return self.data[HISTORY]
