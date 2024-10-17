@@ -52,9 +52,15 @@ async def echo_handler(message: Message) -> None:
             reply = cerebras_chat(session.make_reply_prompt())
 
             session.llm_text(reply)
+
+            updated_params = cerebras_chat(session.make_params_update_prompt())
+            session.params_updated(updated_params)
+
             session.save()
 
             await message.reply(session.llm_reply())
+            await message.reply(updated_params)
+
     except Exception:
         traceback.print_exc()
 

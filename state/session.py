@@ -8,7 +8,7 @@ ROLE = "role"
 CONTENT = "content"
 
 HISTORY = "history"
-TOKEN_BUDGET = 7000
+TOKEN_BUDGET = 5000
 
 allSessions = {}
 
@@ -90,6 +90,27 @@ class Session:
         messages.append({ROLE: "user", CONTENT: self.data[HISTORY][-1][CONTENT]})
         return messages
 
+    def make_params_update_prompt(self) -> list[dict[str, str]]:
+        messages = []
+        tokens_used = len(ai.base_card)
+
+        for message in reversed(self.get_history()):
+            tokens_used += len(message[CONTENT])
+            if tokens_used > TOKEN_BUDGET:
+                break
+            messages.append({ROLE: message[ROLE], CONTENT: message[CONTENT]})
+
+        ret = [{ROLE: "system", CONTENT: ai.base_card}]
+        ret.extend(reversed(messages))
+
+        print(ret)
+
+        return ret
+
+    def params_updated(self, params: str):
+        ai.params = params
+        self.data["params"] = params
+
     def make_reply_prompt(self) -> list[dict[str, str]]:
         messages = []
         tokens_used = len(ai.base_card)
@@ -102,6 +123,15 @@ class Session:
 
         ret = [{ROLE: "system", CONTENT: ai.base_card}]
         ret.extend(reversed(messages))
+
+        ret.append(
+            {
+                ROLE: "user",
+                CONTENT: ai.params_update.format(
+                    **{"npc": ai.name, "params": ai.params}
+                ),
+            }
+        )
 
         print(ret)
 
