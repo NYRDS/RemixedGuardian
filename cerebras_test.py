@@ -8,7 +8,7 @@ client = None
 
 if USE_PROXY:
     transport = SyncProxyTransport.from_url(
-        "socks5://user:password@192.168.55.45:61125"
+        "socks5://user:password@192.168.55.35:61125"
     )
     http_client = httpx.Client(transport=transport)
 

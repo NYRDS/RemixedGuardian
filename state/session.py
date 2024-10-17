@@ -1,5 +1,6 @@
 import json
 import string
+from pyexpat.errors import messages
 
 from state.ai_person import makeRatKing
 
@@ -30,6 +31,7 @@ class Session:
         self.data = {}
         self.data["uid"] = uid
         self.data[HISTORY] = []
+        self.active_user = None
 
     def dumps(self):
         return json.dumps(self.data, ensure_ascii=False)
@@ -51,9 +53,14 @@ class Session:
             return f"{self.turn_template(name)} {text}"
 
     def user_text(self, user_text: str, user_name: str):
+        self.active_user = user_name
         self.data[HISTORY].append(
             {ROLE: "user", CONTENT: self.turn_string(user_name, user_text)}
         )
+
+    def pop_user_text(self):
+        self.data[HISTORY].pop()
+        self.active_user = None
 
     def llm_text(self, llm_text: str):
         llm_text = self.clean_llm_reply(llm_text)
@@ -70,7 +77,20 @@ class Session:
     def get_history(self) -> list[dict[str, str]]:
         return self.data[HISTORY]
 
-    def make_prompt(self) -> list[dict[str, str]]:
+    def make_user_input_check_prompt(self) -> list[dict[str, str]]:
+        format_dict = {"player": self.active_user, "setting": ai.setting}
+        print(ai.player_check, format_dict)
+
+        messages = [
+            {
+                ROLE: "system",
+                CONTENT: ai.player_check.format(**format_dict),
+            }
+        ]
+        messages.append({ROLE: "user", CONTENT: self.data[HISTORY][-1][CONTENT]})
+        return messages
+
+    def make_reply_prompt(self) -> list[dict[str, str]]:
         messages = []
         tokens_used = len(ai.base_card)
 
