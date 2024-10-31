@@ -40,6 +40,15 @@ class Session:
         self.data[RELATIONS] = {}
         self.data[PARAMS] = ""
         self.active_user = None
+        self.fix_data()
+
+    def fix_data(self):
+        if HISTORY not in self.data:
+            self.data[HISTORY] = []
+        if RELATIONS not in self.data:
+            self.data[RELATIONS] = {}
+        if PARAMS not in self.data:
+            self.data[PARAMS] = ""
 
     def dumps(self):
         return json.dumps(self.data, ensure_ascii=False)
@@ -51,6 +60,7 @@ class Session:
     def load(self):
         with open(self.filename(), "r") as f:
             self.data = json.load(f)
+            self.fix_data()
 
     def turn_template(self, name) -> str:
         if ai.lang == "ru":
