@@ -1,9 +1,12 @@
 import json
 import re
 import string
-from pyexpat.errors import messages
 
-from state.ai_person import makeRatKing
+from state.ai_person import makeRatKing, makeGameMaster
+
+PARAMS = "params"
+
+RELATIONS = "relations"
 
 ROLE = "role"
 CONTENT = "content"
@@ -14,6 +17,8 @@ TOKEN_BUDGET = 5000
 allSessions = {}
 
 ai = makeRatKing()
+
+game_master = makeGameMaster()
 
 
 def ensure_session(uid: str):
@@ -32,6 +37,8 @@ class Session:
         self.data = {}
         self.data["uid"] = uid
         self.data[HISTORY] = []
+        self.data[RELATIONS] = {}
+        self.data[PARAMS] = ""
         self.active_user = None
 
     def dumps(self):
@@ -81,12 +88,12 @@ class Session:
 
     def make_user_input_check_prompt(self) -> list[dict[str, str]]:
         format_dict = {"player": self.active_user, "setting": ai.setting}
-        print(ai.player_check, format_dict)
+        print(game_master.player_check, format_dict)
 
         messages = [
             {
                 ROLE: "system",
-                CONTENT: ai.player_check.format(**format_dict),
+                CONTENT: game_master.player_check.format(**format_dict),
             }
         ]
         messages.append({ROLE: "user", CONTENT: self.data[HISTORY][-1][CONTENT]})
@@ -94,7 +101,7 @@ class Session:
 
     def make_params_update_prompt(self) -> list[dict[str, str]]:
         messages = []
-        tokens_used = len(ai.base_card)
+        tokens_used = len(game_master.base_card)
 
         for message in reversed(self.get_history()):
             tokens_used += len(message[CONTENT])
@@ -102,16 +109,58 @@ class Session:
                 break
             messages.append({ROLE: message[ROLE], CONTENT: message[CONTENT]})
 
-        ret = [{ROLE: "system", CONTENT: ai.base_card}]
+        ret = [{ROLE: "system", CONTENT: game_master.base_card}]
         ret.extend(reversed(messages))
 
-        print(ret)
+        ret.append(
+            {
+                ROLE: "user",
+                CONTENT: game_master.params_update.format(
+                    **{"npc": ai.name, "params": ai.params}
+                ),
+            }
+        )
+
+        print("!!!params prompt:\n", ret)
 
         return ret
 
+    def make_relations_update_prompt(self) -> list[dict[str, str]]:
+        messages = []
+        tokens_used = len(game_master.base_card)
+
+        for message in reversed(self.get_history()):
+            tokens_used += len(message[CONTENT])
+            if tokens_used > TOKEN_BUDGET:
+                break
+            messages.append({ROLE: message[ROLE], CONTENT: message[CONTENT]})
+
+        ret = [{ROLE: "system", CONTENT: game_master.base_card}]
+        ret.extend(reversed(messages))
+
+        if self.active_user not in self.data[RELATIONS]:
+            self.data[RELATIONS][self.active_user] = "Нет отношения"
+
+        ret.append(
+            {
+                ROLE: "user",
+                CONTENT: game_master.relations_update.format(
+                    **{"npc": ai.name, "player": self.active_user, RELATIONS:self.data[RELATIONS][self.active_user]}
+                ),
+            }
+        )
+
+        print("!!!relations prompt:\n", ret)
+
+        return ret
+
+
     def params_updated(self, params: str):
         ai.params = params
-        self.data["params"] = params
+        self.data[PARAMS] = params
+
+    def relations_updated(self, relations: str):
+        self.data[RELATIONS][self.active_user] = relations
 
     def make_reply_prompt(self) -> list[dict[str, str]]:
         messages = []
@@ -123,19 +172,10 @@ class Session:
                 break
             messages.append({ROLE: message[ROLE], CONTENT: message[CONTENT]})
 
-        ret = [{ROLE: "system", CONTENT: ai.base_card}]
+        ret = [{ROLE: "system", CONTENT: ai.base_card + f"\nСтатус {ai.name}:\n" + ai.params + f"\nОтношение {ai.name} к {self.active_user}\n" + self.data[RELATIONS][self.active_user]}]
         ret.extend(reversed(messages))
 
-        ret.append(
-            {
-                ROLE: "user",
-                CONTENT: ai.params_update.format(
-                    **{"npc": ai.name, "params": ai.params}
-                ),
-            }
-        )
-
-        print(ret)
+        print("!!!reply prompt:\n", ret)
 
         return ret
 
