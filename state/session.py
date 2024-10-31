@@ -138,14 +138,11 @@ class Session:
         ret = [{ROLE: "system", CONTENT: game_master.base_card}]
         ret.extend(reversed(messages))
 
-        if self.active_user not in self.data[RELATIONS]:
-            self.data[RELATIONS][self.active_user] = "Нет отношения"
-
         ret.append(
             {
                 ROLE: "user",
                 CONTENT: game_master.relations_update.format(
-                    **{"npc": ai.name, "player": self.active_user, RELATIONS:self.data[RELATIONS][self.active_user]}
+                    **{"npc": ai.name, "player": self.active_user, RELATIONS: self.get_relations()}
                 ),
             }
         )
@@ -172,12 +169,21 @@ class Session:
                 break
             messages.append({ROLE: message[ROLE], CONTENT: message[CONTENT]})
 
-        ret = [{ROLE: "system", CONTENT: ai.base_card + f"\nСтатус {ai.name}:\n" + ai.params + f"\nОтношение {ai.name} к {self.active_user}\n" + self.data[RELATIONS][self.active_user]}]
+        if self.active_user not in self.data[RELATIONS]:
+            self.data[RELATIONS][self.active_user] = "Нет отношения"
+
+        ret = [{ROLE: "system", CONTENT: ai.base_card + f"\nСтатус {ai.name}:\n" + ai.params + f"\nОтношение {ai.name} к {self.active_user}\n" + self.get_relations()}]
         ret.extend(reversed(messages))
 
         print("!!!reply prompt:\n", ret)
 
         return ret
+
+    def get_relations(self):
+        if self.active_user not in self.data[RELATIONS]:
+            self.data[RELATIONS][self.active_user] = "Нет отношения"
+
+        return self.data[RELATIONS][self.active_user]
 
     def llm_reply(self) -> str:
         return self.clean_llm_reply(self.data[HISTORY][-1][CONTENT])
