@@ -131,6 +131,24 @@ class Session:
 
         return messages
 
+
+    def make_user_input_fix_prompt(self) -> list[dict[str, str]]:
+        format_dict = {"player": self.active_user,
+                       "setting": self.ai.setting,
+                       "history": self.get_history(),
+                       "player_status": self.get_user_status(),
+                       }
+
+        messages = [
+            {
+                ROLE: "system",
+                CONTENT: self.game_master.player_check.format(**format_dict),
+            },
+            {ROLE: "user", CONTENT: self.user_intent},
+        ]
+
+        return messages
+
     def make_persona_prompt(self) -> list[dict[str, str]]:
         format_dict = {"player": self.active_user,
                        "setting": self.ai.setting,

@@ -69,11 +69,15 @@ async def echo_handler(message: Message) -> None:
                 return
 
 
-            check_reply = cerebras_chat(session.make_user_input_check_prompt())
+            # check_reply = cerebras_chat(session.make_user_input_check_prompt())
+            #
+            # if not await check_for_yes(check_reply):
+            #     await message.reply(check_reply)
+            #     return
 
-            if not await check_for_yes(check_reply):
-                await message.reply(check_reply)
-                return
+            fix_reply = cerebras_chat(session.make_user_input_fix_prompt())
+            session.user_text(fix_reply, username)
+
 
             session.npc_intent = cerebras_chat(session.make_intent_prompt())
 
@@ -83,21 +87,22 @@ async def echo_handler(message: Message) -> None:
             user_params = cerebras_chat(session.make_user_params_update_prompt())
             session.user_status(user_params)
 
-            await message.reply(f"{username}:\n{user_params}")
+            #await message.reply(f"{username}:\n{user_params}")
 
             updated_params = cerebras_chat(session.make_params_update_prompt())
             updated_params = session.clean_llm_reply(updated_params)
             session.params_updated(updated_params)
 
-            await message.reply(updated_params)
+            #await message.reply(updated_params)
 
             updated_relations = cerebras_chat(session.make_relations_update_prompt())
             updated_relations = session.clean_llm_reply(updated_relations)
             session.relations_updated(updated_relations)
 
-            await message.reply(updated_relations)
+            #await message.reply(updated_relations)
 
-            await message.reply(session.llm_reply())
+
+            await message.reply(f"{session.active_user}:\n{session.user_intent}:\n{session.llm_reply()}")
 
             session.save()
 
