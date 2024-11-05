@@ -1,6 +1,8 @@
 import json
+import os
 import re
 import string
+import time
 from random import random, randint
 
 from state.ai_person import makeRatKing, makeGameMaster
@@ -30,6 +32,11 @@ def ensure_session(uid: str):
 
 
 def reset_session(uid: str):
+    ts = int(time.time())
+    os.rename(
+        allSessions[uid].filename(),
+        allSessions[uid].filename() + f".{ts}.bak")
+
     allSessions[uid] = Session(uid)
 
 
