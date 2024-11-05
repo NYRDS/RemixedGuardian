@@ -55,7 +55,7 @@ async def echo_handler(message: Message) -> None:
                 return
 
             if text.startswith("персона"):
-                make_persona_prompt = session.make_persona_prompt()
+                make_persona_prompt = session.make_persona_prompt(text)
                 persona_candidate = cerebras_chat(make_persona_prompt)
 
                 if check_for_no(persona_candidate):
