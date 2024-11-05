@@ -34,8 +34,8 @@ async def echo_handler(message: Message) -> None:
             username = message.from_user.first_name
 
         if (
-            True
-            or message.chat.id == -1001885182552
+            # True or
+            message.chat.id == -1001885182552
             and message.chat.type == "supergroup"
             and message.message_thread_id == 4521
         ):  # Remixed Dungeon sandbox

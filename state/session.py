@@ -144,7 +144,7 @@ class Session:
         ret.append(
             {
                 ROLE: "user",
-                CONTENT: game_master.params_update.format(
+                CONTENT: game_master.params_pc_update.format(
                     **{"npc": self.active_user, "params": self.get_user_status()}
                 ),
             }
@@ -203,7 +203,7 @@ class Session:
         ret.append(
             {
                 ROLE: "user",
-                CONTENT: f"Продолжи историю учитывая статус и намерения {self.active_user} и {ai.name}. Будь лаконичен, не более 3 абзацев.\n",
+                CONTENT: f"Продолжи историю учитывая статус и намерения {self.active_user} и {ai.name}. Описывай только что произойдет в результате действий {self.active_user} и {ai.name}, не описывай их дальнейшие шаги. Будь лаконичен, не более 3 абзацев.\n",
             }
         )
 
