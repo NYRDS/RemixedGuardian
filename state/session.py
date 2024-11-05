@@ -142,7 +142,7 @@ class Session:
         messages = [
             {
                 ROLE: "system",
-                CONTENT: self.game_master.player_check.format(**format_dict),
+                CONTENT: self.game_master.player_fix.format(**format_dict),
             },
             {ROLE: "user", CONTENT: self.user_intent},
         ]
