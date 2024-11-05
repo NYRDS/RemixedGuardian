@@ -9,6 +9,7 @@ import traceback
 from aiogram import Bot, Dispatcher, Router
 from aiogram.dispatcher import router
 from aiogram.types import Message
+from cerebras.cloud.sdk import RateLimitError
 
 from cerebras_test import cerebras_chat
 from conf import TG_API_TOKEN, DEBUG
@@ -106,6 +107,9 @@ async def echo_handler(message: Message) -> None:
 
             session.save()
 
+    except RateLimitError as rl:
+        await message.reply(f"На сегодня нафлудились: {rl.message}")
+        return
     except Exception:
         traceback.print_exc()
 
