@@ -101,8 +101,8 @@ async def echo_handler(message: Message) -> None:
 
             #await message.reply(updated_relations)
 
-
-            await message.reply(f"{session.active_user}:\n{session.user_intent}:\n{session.llm_reply()}")
+            await message.reply(f"{session.active_user}:\n{session.user_intent}")
+            await message.reply(f"{session.llm_reply()}")
 
             session.save()
 
