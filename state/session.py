@@ -32,6 +32,7 @@ def ensure_session(uid: str):
 
 
 def reset_session(uid: str):
+    ensure_session(uid)
     ts = int(time.time())
     os.rename(
         allSessions[uid].filename(),
