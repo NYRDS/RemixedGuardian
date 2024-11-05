@@ -1,16 +1,17 @@
 import json
 import re
 import string
+from random import random, randint
 
 from state.ai_person import makeRatKing, makeGameMaster
 
 PARAMS = "params"
 
 RELATIONS = "relations"
-
+USER_STATUS = "user_status"
 ROLE = "role"
 CONTENT = "content"
-
+STORY = "story"
 HISTORY = "history"
 TOKEN_BUDGET = 5000
 
@@ -32,6 +33,10 @@ def ensure_session(uid: str):
     return allSessions[uid]
 
 
+def reset_session(uid: str):
+    allSessions[uid] = Session(uid)
+
+
 class Session:
     def __init__(self, uid: str):
         self.data = {}
@@ -40,6 +45,8 @@ class Session:
         self.data[RELATIONS] = {}
         self.data[PARAMS] = ""
         self.active_user = None
+        self.user_intent = None
+        self.npc_intent = None
         self.fix_data()
 
     def fix_data(self):
@@ -49,6 +56,8 @@ class Session:
             self.data[RELATIONS] = {}
         if PARAMS not in self.data:
             self.data[PARAMS] = ""
+        if USER_STATUS not in self.data:
+            self.data[USER_STATUS] = {}
 
     def dumps(self):
         return json.dumps(self.data, ensure_ascii=False)
@@ -72,61 +81,71 @@ class Session:
 
     def user_text(self, user_text: str, user_name: str):
         self.active_user = user_name
-        self.data[HISTORY].append(
-            {ROLE: "user", CONTENT: self.turn_string(user_name, user_text)}
-        )
+        self.user_intent = user_text
 
     def pop_user_text(self):
-        self.data[HISTORY].pop()
         self.active_user = None
 
     def llm_text(self, llm_text: str):
         llm_text = self.clean_llm_reply(llm_text)
 
-        self.data[HISTORY].append(
-            {ROLE: "assistant", CONTENT: self.turn_string(ai.name, llm_text)}
-        )
+        self.data[HISTORY].append(llm_text)
 
     def clean_llm_reply(self, llm_text):
-        return re.sub(r"Ход.*?:", "", llm_text).strip(string.whitespace)
-        # return llm_text.replace(self.turn_template(ai.name), "").strip(
-        #     string.whitespace
-        # )
+        return llm_text.strip(string.whitespace)
 
     def get_history(self) -> list[dict[str, str]]:
-        return self.data[HISTORY]
+        ret = ""
+
+        tokens_used = 0
+
+        for message in reversed(self.data[HISTORY]):
+            tokens_used += len(message)
+            if tokens_used > TOKEN_BUDGET:
+                break
+            ret = message + "\n" + ret
+
+        return ret
 
     def make_user_input_check_prompt(self) -> list[dict[str, str]]:
         format_dict = {"player": self.active_user, "setting": ai.setting}
-        print(game_master.player_check, format_dict)
 
         messages = [
             {
                 ROLE: "system",
                 CONTENT: game_master.player_check.format(**format_dict),
-            }
+            },
+            {ROLE: "user", CONTENT: self.user_intent},
         ]
-        messages.append({ROLE: "user", CONTENT: self.data[HISTORY][-1][CONTENT]})
+
         return messages
 
     def make_params_update_prompt(self) -> list[dict[str, str]]:
-        messages = []
-        tokens_used = len(game_master.base_card)
+        ret = [
+            {ROLE: "system", CONTENT: game_master.base_card},
+            {ROLE: "assistant", CONTENT: self.get_history()},
+            {
+                ROLE: "user",
+                CONTENT: game_master.params_update.format(
+                    **{"npc": ai.name, "params": ai.params}
+                ),
+            },
+        ]
 
-        for message in reversed(self.get_history()):
-            tokens_used += len(message[CONTENT])
-            if tokens_used > TOKEN_BUDGET:
-                break
-            messages.append({ROLE: message[ROLE], CONTENT: message[CONTENT]})
+        print("!!!params prompt:\n", ret)
 
+        return ret
+
+    def make_user_params_update_prompt(self) -> list[dict[str, str]]:
         ret = [{ROLE: "system", CONTENT: game_master.base_card}]
-        ret.extend(reversed(messages))
+
+        ret.append({ROLE: "assistant", CONTENT: self.get_history()})
 
         ret.append(
             {
                 ROLE: "user",
                 CONTENT: game_master.params_update.format(
-                    **{"npc": ai.name, "params": ai.params}
+                    **{"npc": self.active_user, "params": self.get_user_status()}
                 ),
             }
         )
@@ -136,23 +155,18 @@ class Session:
         return ret
 
     def make_relations_update_prompt(self) -> list[dict[str, str]]:
-        messages = []
-        tokens_used = len(game_master.base_card)
-
-        for message in reversed(self.get_history()):
-            tokens_used += len(message[CONTENT])
-            if tokens_used > TOKEN_BUDGET:
-                break
-            messages.append({ROLE: message[ROLE], CONTENT: message[CONTENT]})
-
         ret = [{ROLE: "system", CONTENT: game_master.base_card}]
-        ret.extend(reversed(messages))
+        ret.append({ROLE: "assistant", CONTENT: self.get_history()})
 
         ret.append(
             {
                 ROLE: "user",
                 CONTENT: game_master.relations_update.format(
-                    **{"npc": ai.name, "player": self.active_user, RELATIONS: self.get_relations()}
+                    **{
+                        "npc": ai.name,
+                        "player": self.active_user,
+                        RELATIONS: self.get_relations(),
+                    }
                 ),
             }
         )
@@ -161,7 +175,6 @@ class Session:
 
         return ret
 
-
     def params_updated(self, params: str):
         ai.params = params
         self.data[PARAMS] = params
@@ -169,21 +182,54 @@ class Session:
     def relations_updated(self, relations: str):
         self.data[RELATIONS][self.active_user] = relations
 
-    def make_reply_prompt(self) -> list[dict[str, str]]:
-        messages = []
-        tokens_used = len(ai.base_card)
+    def make_story_prompt(self) -> list[dict[str, str]]:
+        ret = [
+            {
+                ROLE: "system",
+                CONTENT: game_master.base_card
+                + f"\nСтатус {ai.name}:\n"
+                + ai.params
+                + f"\nДействия {ai.name}\n"
+                + self.npc_intent
+                + f"\nd20 roll за {ai.name}: {randint(1,20)}\n"
+                + f"\nСтатус {self.active_user}:\n"
+                + self.get_user_status()
+                + f"\nДействия {self.active_user}\n"
+                + f"\nd20 roll за {self.active_user}: {randint(1, 20)}\n"
+                + self.user_intent,
+            }
+        ]
+        ret.append({ROLE: "assistant", CONTENT: self.get_history()})
+        ret.append(
+            {
+                ROLE: "user",
+                CONTENT: f"Продолжи историю учитывая статус и намерения {self.active_user} и {ai.name}. Будь лаконичен, не более 3 абзацев.\n",
+            }
+        )
 
-        for message in reversed(self.get_history()):
-            tokens_used += len(message[CONTENT])
-            if tokens_used > TOKEN_BUDGET:
-                break
-            messages.append({ROLE: message[ROLE], CONTENT: message[CONTENT]})
+        print("!!!reply prompt:\n", ret)
 
+        return ret
+
+    def make_intent_prompt(self) -> list[dict[str, str]]:
         if self.active_user not in self.data[RELATIONS]:
             self.data[RELATIONS][self.active_user] = "Нет отношения"
 
-        ret = [{ROLE: "system", CONTENT: ai.base_card + f"\nСтатус {ai.name}:\n" + ai.params + f"\nОтношение {ai.name} к {self.active_user}\n" + self.get_relations()}]
-        ret.extend(reversed(messages))
+        ret = [
+            {
+                ROLE: "system",
+                CONTENT: ai.base_card
+                + f"\nСтатус {ai.name}:\n"
+                + ai.params
+                + f"\nОтношение {ai.name} к {self.active_user}\n"
+                + self.get_relations(),
+            },
+            {ROLE: "assistant", CONTENT: self.get_history()},
+            {
+                ROLE: "user",
+                CONTENT: "Опиши что твой персонаж скажет и будет делать в этой ситуацию. Только реплики и действия, не описывай что произошло дальше.",
+            },
+        ]
 
         print("!!!reply prompt:\n", ret)
 
@@ -195,8 +241,17 @@ class Session:
 
         return self.data[RELATIONS][self.active_user]
 
+    def user_status(self, data: str):
+        self.data[USER_STATUS][self.active_user] = data
+
+    def get_user_status(self):
+        if self.active_user not in self.data[USER_STATUS]:
+            self.data[USER_STATUS][self.active_user] = ""
+
+        return self.data[USER_STATUS][self.active_user]
+
     def llm_reply(self) -> str:
-        return self.clean_llm_reply(self.data[HISTORY][-1][CONTENT])
+        return self.clean_llm_reply(self.data[HISTORY][-1])
 
     def filename(self):
         return f"data/sessions/{self.data['uid']}.json"

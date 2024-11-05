@@ -1,3 +1,6 @@
+import re
+
+
 def floodScore(s: str) -> int:
     score = 0
     score += s.count("\n")

@@ -30,7 +30,9 @@ def cerebras_chat(prompt):
         top_p=1,
     )
     print(completion_create_response)
-    return completion_create_response.choices[0].message.content
+    ret = completion_create_response.choices[0].message.content
+    print(ret)
+    return ret
 
 
 if __name__ == "__main__":
