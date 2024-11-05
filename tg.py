@@ -49,14 +49,30 @@ async def echo_handler(message: Message) -> None:
                 return
 
             session = ensure_session(uid)
+
+            if text.startswith("статус"):
+                await message.reply(session.get_user_status())
+                return
+
+            if text.startswith("персона"):
+                make_persona_prompt = session.make_persona_prompt()
+                persona_candidate = cerebras_chat(make_persona_prompt)
+
+                if check_for_no(persona_candidate):
+                    await message.reply(persona_candidate)
+                    return
+
+                session.user_status(persona_candidate)
+
+                await message.reply(f"Персона обновлена: {persona_candidate}")
+                return
+
+
             session.user_text(text, username)
 
             check_reply = cerebras_chat(session.make_user_input_check_prompt())
 
-            test_reply = check_reply.strip().lower().strip().strip(string.punctuation)
-
-            if not test_reply.startswith("да") and not test_reply.endswith("да"):
-                session.pop_user_text()
+            if not await check_for_yes(check_reply):
                 await message.reply(check_reply)
                 return
 
@@ -89,6 +105,15 @@ async def echo_handler(message: Message) -> None:
     except Exception:
         traceback.print_exc()
 
+async def check_for_yes(check_reply):
+    test_reply = check_reply.lower().strip(string.punctuation + string.punctuation)
+    if test_reply.startswith("да") or test_reply.endswith("да"):
+        return True
+
+async def check_for_no(check_reply):
+    test_reply = check_reply.lower().strip(string.punctuation + string.punctuation)
+    if test_reply.startswith("нет") or test_reply.endswith("нет"):
+        return True
 
 async def main() -> None:
     dp.include_router(router)
