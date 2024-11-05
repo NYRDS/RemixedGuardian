@@ -123,7 +123,7 @@ class Session:
 
         return messages
 
-    def make_persona_prompt(self, user_persona) -> list[dict[str, str]]:
+    def make_persona_prompt(self) -> list[dict[str, str]]:
         format_dict = {"player": self.active_user,
                        "setting": self.ai.setting,
                        "history": self.get_history(),
@@ -134,7 +134,7 @@ class Session:
                 ROLE: "system",
                 CONTENT: self.game_master.player_persona.format(**format_dict),
             },
-            {ROLE: "user", CONTENT: f"Предложение {self.active_user}:\n {user_persona}"},
+            {ROLE: "user", CONTENT: f"Предложение {self.active_user}:\n {self.user_intent}"},
             {ROLE: "assistant", CONTENT: f"Лист персонажа {self.active_user}:\n"}
         ]
 
