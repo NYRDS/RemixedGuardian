@@ -52,11 +52,13 @@ async def echo_handler(message: Message) -> None:
             session = ensure_session(uid)
             session.user_text(text, username)
 
-            if text.startswith("статус"):
+            maybe_cmd = text.strip(string.whitespace + string.punctuation).split()[0]
+
+            if maybe_cmd.startswith("статус"):
                 await message.reply(session.get_user_status())
                 return
 
-            if text.startswith("персона"):
+            if maybe_cmd.startswith("персона"):
                 make_persona_prompt = session.make_persona_prompt()
                 persona_candidate = cerebras_chat(make_persona_prompt)
 
