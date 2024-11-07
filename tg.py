@@ -44,15 +44,15 @@ async def echo_handler(message: Message) -> None:
 
             uid = str(message.chat.id)
 
-            if text.startswith("reset"):
+            maybe_cmd = text.strip(string.whitespace + string.punctuation).split()[0]
+
+            if maybe_cmd.startswith("reset"):
                 reset_session(uid)
                 await message.reply("сессия сброшена")
                 return
 
             session = ensure_session(uid)
             session.user_text(text, username)
-
-            maybe_cmd = text.strip(string.whitespace + string.punctuation).split()[0]
 
             if maybe_cmd.startswith("статус"):
                 await message.reply(session.get_user_status())
