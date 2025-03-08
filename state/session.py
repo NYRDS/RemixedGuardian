@@ -1,6 +1,8 @@
 import json
+import os
 import re
 import string
+import time
 from random import random, randint
 
 from state.ai_person import makeRatKing, makeGameMaster
@@ -17,10 +19,6 @@ TOKEN_BUDGET = 5000
 
 allSessions = {}
 
-ai = makeRatKing()
-
-game_master = makeGameMaster()
-
 
 def ensure_session(uid: str):
     if uid not in allSessions:
@@ -34,6 +32,12 @@ def ensure_session(uid: str):
 
 
 def reset_session(uid: str):
+    ensure_session(uid)
+    ts = int(time.time())
+    os.rename(
+        allSessions[uid].filename(),
+        allSessions[uid].filename() + f".{ts}.bak")
+
     allSessions[uid] = Session(uid)
 
 
@@ -48,6 +52,9 @@ class Session:
         self.user_intent = None
         self.npc_intent = None
         self.fix_data()
+
+        self.ai = makeRatKing()
+        self.game_master = makeGameMaster()
 
     def fix_data(self):
         if HISTORY not in self.data:
@@ -72,11 +79,11 @@ class Session:
             self.fix_data()
 
     def turn_template(self, name) -> str:
-        if ai.lang == "ru":
+        if self.ai.lang == "ru":
             return f"Ход {name}:"
 
     def turn_string(self, name, text) -> str:
-        if ai.lang == "ru":
+        if self.ai.lang == "ru":
             return f"{self.turn_template(name)} {text}"
 
     def user_text(self, user_text: str, user_name: str):
@@ -108,26 +115,66 @@ class Session:
         return ret
 
     def make_user_input_check_prompt(self) -> list[dict[str, str]]:
-        format_dict = {"player": self.active_user, "setting": ai.setting}
+        format_dict = {"player": self.active_user,
+                       "setting": self.ai.setting,
+                       "history": self.get_history(),
+                       "player_status": self.get_user_status(),
+                       }
 
         messages = [
             {
                 ROLE: "system",
-                CONTENT: game_master.player_check.format(**format_dict),
+                CONTENT: self.game_master.player_check.format(**format_dict),
             },
             {ROLE: "user", CONTENT: self.user_intent},
         ]
 
         return messages
 
+
+    def make_user_input_fix_prompt(self) -> list[dict[str, str]]:
+        format_dict = {"player": self.active_user,
+                       "setting": self.ai.setting,
+                       "history": self.get_history(),
+                       "player_status": self.get_user_status(),
+                       }
+
+        messages = [
+            {
+                ROLE: "system",
+                CONTENT: self.game_master.player_fix.format(**format_dict),
+            },
+            {ROLE: "user", CONTENT: self.user_intent},
+        ]
+
+        return messages
+
+    def make_persona_prompt(self) -> list[dict[str, str]]:
+        format_dict = {"player": self.active_user,
+                       "setting": self.ai.setting,
+                       "history": self.get_history(),
+                       }
+
+        messages = [
+            {
+                ROLE: "system",
+                CONTENT: self.game_master.player_persona.format(**format_dict),
+            },
+            {ROLE: "user", CONTENT: f"Предложение {self.active_user}:\n {self.user_intent}"},
+            {ROLE: "assistant", CONTENT: f"Лист персонажа {self.active_user}:\n"}
+        ]
+
+        return messages
+
+
     def make_params_update_prompt(self) -> list[dict[str, str]]:
         ret = [
-            {ROLE: "system", CONTENT: game_master.base_card},
+            {ROLE: "system", CONTENT: self.game_master.base_card},
             {ROLE: "assistant", CONTENT: self.get_history()},
             {
                 ROLE: "user",
-                CONTENT: game_master.params_update.format(
-                    **{"npc": ai.name, "params": ai.params}
+                CONTENT: self.game_master.params_update.format(
+                    **{"npc": self.ai.name, "params": self.ai.params}
                 ),
             },
         ]
@@ -137,14 +184,14 @@ class Session:
         return ret
 
     def make_user_params_update_prompt(self) -> list[dict[str, str]]:
-        ret = [{ROLE: "system", CONTENT: game_master.base_card}]
+        ret = [{ROLE: "system", CONTENT: self.game_master.base_card}]
 
         ret.append({ROLE: "assistant", CONTENT: self.get_history()})
 
         ret.append(
             {
                 ROLE: "user",
-                CONTENT: game_master.params_pc_update.format(
+                CONTENT: self.game_master.params_pc_update.format(
                     **{"npc": self.active_user, "params": self.get_user_status()}
                 ),
             }
@@ -155,15 +202,15 @@ class Session:
         return ret
 
     def make_relations_update_prompt(self) -> list[dict[str, str]]:
-        ret = [{ROLE: "system", CONTENT: game_master.base_card}]
+        ret = [{ROLE: "system", CONTENT: self.game_master.base_card}]
         ret.append({ROLE: "assistant", CONTENT: self.get_history()})
 
         ret.append(
             {
                 ROLE: "user",
-                CONTENT: game_master.relations_update.format(
+                CONTENT: self.game_master.relations_update.format(
                     **{
-                        "npc": ai.name,
+                        "npc": self.ai.name,
                         "player": self.active_user,
                         RELATIONS: self.get_relations(),
                     }
@@ -176,7 +223,7 @@ class Session:
         return ret
 
     def params_updated(self, params: str):
-        ai.params = params
+        self.ai.params = params
         self.data[PARAMS] = params
 
     def relations_updated(self, relations: str):
@@ -186,12 +233,12 @@ class Session:
         ret = [
             {
                 ROLE: "system",
-                CONTENT: game_master.base_card
-                + f"\nСтатус {ai.name}:\n"
-                + ai.params
-                + f"\nДействия {ai.name}\n"
+                CONTENT: self.game_master.base_card
+                + f"\nСтатус {self.ai.name}:\n"
+                + self.ai.params
+                + f"\nДействия {self.ai.name}\n"
                 + self.npc_intent
-                + f"\nd20 roll за {ai.name}: {randint(1,20)}\n"
+                + f"\nd20 roll за {self.ai.name}: {randint(1,20)}\n"
                 + f"\nСтатус {self.active_user}:\n"
                 + self.get_user_status()
                 + f"\nДействия {self.active_user}\n"
@@ -203,7 +250,10 @@ class Session:
         ret.append(
             {
                 ROLE: "user",
-                CONTENT: f"Продолжи историю учитывая статус и намерения {self.active_user} и {ai.name}. Описывай только что произойдет в результате действий {self.active_user} и {ai.name}, не описывай их дальнейшие шаги. Будь лаконичен, не более 3 абзацев.\n",
+                CONTENT: f"Продолжи историю учитывая статус и намерения {self.active_user} и {self.ai.name}. "
+                         f"Описывай только что произойдет в результате действий {self.active_user} и {self.ai.name}, "
+                         f"не описывай их дальнейшие шаги. Будь лаконичен, не более 3 абзацев.\n"
+                         f"Если {self.ai.name} мертв, не продолжай историю, а предложи начать новую игру с помощью команды reset.",
             }
         )
 
@@ -218,10 +268,10 @@ class Session:
         ret = [
             {
                 ROLE: "system",
-                CONTENT: ai.base_card
-                + f"\nСтатус {ai.name}:\n"
-                + ai.params
-                + f"\nОтношение {ai.name} к {self.active_user}\n"
+                CONTENT: self.ai.base_card
+                + f"\nСтатус {self.ai.name}:\n"
+                + self.ai.params
+                + f"\nОтношение {self.ai.name} к {self.active_user}\n"
                 + self.get_relations(),
             },
             {ROLE: "assistant", CONTENT: self.get_history()},
