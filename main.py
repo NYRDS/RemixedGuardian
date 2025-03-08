@@ -122,6 +122,10 @@ class RemixedGuardian(discord.Client):
                 await async_publish_reply(message.reference.message_id, message.content)
                 return
 
+        if message.author.id in GOOGLE_PLAY_ADMINS:
+            return # Admins can post anything
+
+
         if message.type in [MessageType.default, MessageType.reply]:
             author = str(message.author.id)
             reason = ""
