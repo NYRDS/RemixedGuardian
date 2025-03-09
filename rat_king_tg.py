@@ -11,7 +11,7 @@ from aiogram.dispatcher import router
 from aiogram.types import Message
 from cerebras.cloud.sdk import RateLimitError
 
-from llm_api.cerebras import cerebras_chat
+from llm_api.mistral import mistral_chat
 from conf import TG_API_TOKEN
 from state.session import ensure_session, reset_session
 
@@ -60,7 +60,7 @@ async def echo_handler(message: Message) -> None:
 
             if maybe_cmd.startswith("персона"):
                 make_persona_prompt = session.make_persona_prompt()
-                persona_candidate = cerebras_chat(make_persona_prompt)
+                persona_candidate = mistral_chat(make_persona_prompt)
 
                 if check_for_no(persona_candidate):
                     await message.reply(persona_candidate)
@@ -78,27 +78,27 @@ async def echo_handler(message: Message) -> None:
             #     await message.reply(check_reply)
             #     return
 
-            fix_reply = cerebras_chat(session.make_user_input_fix_prompt())
+            fix_reply = mistral_chat(session.make_user_input_fix_prompt())
             session.user_text(fix_reply, username)
 
 
-            session.npc_intent = cerebras_chat(session.make_intent_prompt())
+            session.npc_intent = mistral_chat(session.make_intent_prompt())
 
-            reply = cerebras_chat(session.make_story_prompt())
+            reply = mistral_chat(session.make_story_prompt())
             session.llm_text(session.clean_llm_reply(reply))
 
-            user_params = cerebras_chat(session.make_user_params_update_prompt())
+            user_params = mistral_chat(session.make_user_params_update_prompt())
             session.user_status(user_params)
 
             #await message.reply(f"{username}:\n{user_params}")
 
-            updated_params = cerebras_chat(session.make_params_update_prompt())
+            updated_params = mistral_chat(session.make_params_update_prompt())
             updated_params = session.clean_llm_reply(updated_params)
             session.params_updated(updated_params)
 
             #await message.reply(updated_params)
 
-            updated_relations = cerebras_chat(session.make_relations_update_prompt())
+            updated_relations = mistral_chat(session.make_relations_update_prompt())
             updated_relations = session.clean_llm_reply(updated_relations)
             session.relations_updated(updated_relations)
 
