@@ -1,17 +1,15 @@
 import asyncio
 import datetime
 import signal
-import time
 
 import contractions
 from discord import MessageType
-from emoji import emojize, replace_emoji
+from emoji import replace_emoji
 from ftlangdetect import detect
 
 from conf import (
     BOT_TOKEN,
     CHANNEL_GENERAL,
-    CHANNEL_ANN,
     CHANNEL_REVIEWS,
     GOOGLE_PLAY_ADMINS,
     CHANNEL_GIT_MONITOR,
@@ -20,8 +18,8 @@ from conf import (
 import discord
 from discord.ext import tasks
 
-from google_play import async_publish_fresh_reviews, async_publish_reply
-from repo_monitor import check_repos
+from utils.google_play import async_publish_fresh_reviews, async_publish_reply
+from utils.repo_monitor import check_repos
 from utils import floodScore
 import pylru
 import shelve

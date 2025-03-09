@@ -11,9 +11,9 @@ from aiogram.dispatcher import router
 from aiogram.types import Message
 from cerebras.cloud.sdk import RateLimitError
 
-from cerebras_test import cerebras_chat
-from conf import TG_API_TOKEN, DEBUG
-from state.session import ensure_session, HISTORY, Session, reset_session
+from llm_api.cerebras import cerebras_chat
+from conf import TG_API_TOKEN
+from state.session import ensure_session, reset_session
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
