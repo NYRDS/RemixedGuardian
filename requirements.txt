@@ -8,3 +8,4 @@ pylru
 google-auth
 google-api-python-client
 httpx_socks
+mistralai
