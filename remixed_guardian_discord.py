@@ -20,7 +20,7 @@ from discord.ext import tasks
 
 from utils.google_play import async_publish_fresh_reviews, async_publish_reply
 from utils.repo_monitor import check_repos
-from utils import floodScore
+from utils.utils import floodScore
 import pylru
 import shelve
 
