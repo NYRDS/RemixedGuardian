@@ -3,6 +3,7 @@ import os
 import re
 import string
 import time
+import traceback
 from random import random, randint
 
 from state.ai_person import makeRatKing, makeGameMaster
@@ -34,9 +35,12 @@ def ensure_session(uid: str):
 def reset_session(uid: str):
     ensure_session(uid)
     ts = int(time.time())
-    os.rename(
-        allSessions[uid].filename(),
-        allSessions[uid].filename() + f".{ts}.bak")
+    try:
+        os.rename(
+            allSessions[uid].filename(),
+            allSessions[uid].filename() + f".{ts}.bak")
+    except Exception:
+        traceback.print_tb()
 
     allSessions[uid] = Session(uid)
 
