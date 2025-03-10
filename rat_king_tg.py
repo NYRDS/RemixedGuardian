@@ -72,7 +72,8 @@ async def echo_handler(message: Message) -> None:
                 await message.reply(f"Персона обновлена: {persona_candidate}")
                 return
 
-            if len(session.user_status(uid)) == "":
+            user_status = session.user_status(uid)
+            if user_status is None or len(user_status) == "":
                 await message.reply(f"Сначала вам нужно создать персонажа с помощью команды 'персона', например:"
                                     f"Персона: Эльф аристократ, искусный лучник"
                                     f"Или"
