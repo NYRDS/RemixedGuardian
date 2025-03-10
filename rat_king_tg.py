@@ -63,13 +63,22 @@ async def echo_handler(message: Message) -> None:
                 make_persona_prompt = session.make_persona_prompt()
                 persona_candidate = mistral_chat(make_persona_prompt)
 
-                if check_for_no(persona_candidate):
+                if await check_for_no(persona_candidate):
                     await message.reply(persona_candidate)
                     return
 
                 session.user_status(persona_candidate)
 
                 await message.reply(f"Персона обновлена: {persona_candidate}")
+                return
+
+            if len(session.user_status(uid)) == "":
+                await message.reply(f"Сначала вам нужно создать персонажа с помощью команды 'персона', например:"
+                                    f"Персона: Эльф аристократ, искусный лучник"
+                                    f"Или"
+                                    f"Персона: Яростный хоббит-монах, мастер рукопашного боя"
+                                    f"Или"
+                                    f"Персона: 'то что вам придет в голову'")
                 return
 
 
