@@ -45,6 +45,7 @@ async def echo_handler(message: Message) -> None:
             uid = str(message.chat.id)
 
             maybe_cmd = text.strip(string.whitespace + string.punctuation).split()[0]
+            maybe_cmd = maybe_cmd.lower()
 
             if maybe_cmd.startswith("reset"):
                 reset_session(uid)

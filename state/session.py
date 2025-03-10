@@ -169,9 +169,11 @@ class Session:
 
     def make_params_update_prompt(self) -> list[dict[str, str]]:
         ret = [
-            {ROLE: "system", CONTENT: self.game_master.base_card},
-            {ROLE: "assistant", CONTENT: self.get_history()},
-            {
+            {ROLE: "system", CONTENT: self.game_master.base_card
+             + "\nПредыстория:\n"
+             + self.get_history()
+             },
+             {
                 ROLE: "user",
                 CONTENT: self.game_master.params_update.format(
                     **{"npc": self.ai.name, "params": self.ai.params}
@@ -184,28 +186,25 @@ class Session:
         return ret
 
     def make_user_params_update_prompt(self) -> list[dict[str, str]]:
-        ret = [{ROLE: "system", CONTENT: self.game_master.base_card}]
-
-        ret.append({ROLE: "assistant", CONTENT: self.get_history()})
-
-        ret.append(
+        ret = [{ROLE: "system", CONTENT: self.game_master.base_card
+                + "\nПредыстория:\n"
+                + self.get_history()
+                },
             {
                 ROLE: "user",
                 CONTENT: self.game_master.params_pc_update.format(
                     **{"npc": self.active_user, "params": self.get_user_status()}
                 ),
             }
-        )
+        ]
 
         print("!!!params prompt:\n", ret)
 
         return ret
 
     def make_relations_update_prompt(self) -> list[dict[str, str]]:
-        ret = [{ROLE: "system", CONTENT: self.game_master.base_card}]
-        ret.append({ROLE: "assistant", CONTENT: self.get_history()})
-
-        ret.append(
+        ret = [{ROLE: "system", CONTENT: self.game_master.base_card +
+                f"\nПредыстория:\n" + self.get_history()},
             {
                 ROLE: "user",
                 CONTENT: self.game_master.relations_update.format(
@@ -216,7 +215,7 @@ class Session:
                     }
                 ),
             }
-        )
+        ]
 
         print("!!!relations prompt:\n", ret)
 
@@ -243,10 +242,11 @@ class Session:
                 + self.get_user_status()
                 + f"\nДействия {self.active_user}\n"
                 + f"\nd20 roll за {self.active_user}: {randint(1, 20)}\n"
-                + self.user_intent,
+                + self.user_intent
+                + f"\nПредыстория:\n"
+                + self.get_history(),
             }
         ]
-        ret.append({ROLE: "assistant", CONTENT: self.get_history()})
         ret.append(
             {
                 ROLE: "user",
@@ -271,10 +271,11 @@ class Session:
                 CONTENT: self.ai.base_card
                 + f"\nСтатус {self.ai.name}:\n"
                 + self.ai.params
-                + f"\nОтношение {self.ai.name} к {self.active_user}\n"
-                + self.get_relations(),
+                + f"\nОтношение {self.ai.name} к {self.active_user}:\n"
+                + self.get_relations()
+                + f"\nПредыстория:\n"
+                + self.get_history(),
             },
-            {ROLE: "assistant", CONTENT: self.get_history()},
             {
                 ROLE: "user",
                 CONTENT: "Опиши что твой персонаж скажет и будет делать в этой ситуацию. Только реплики и действия, не описывай что произошло дальше.",
