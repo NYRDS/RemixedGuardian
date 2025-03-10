@@ -39,8 +39,8 @@ def reset_session(uid: str):
         os.rename(
             allSessions[uid].filename(),
             allSessions[uid].filename() + f".{ts}.bak")
-    except Exception:
-        traceback.print_tb()
+    except Exception as e:
+        print("reset session", e)
 
     allSessions[uid] = Session(uid)
 
