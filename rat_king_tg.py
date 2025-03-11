@@ -74,16 +74,15 @@ async def echo_handler(message: Message) -> None:
             user_status = session.get_user_status()
 
             if maybe_cmd.startswith("статус"):
+                if user_status is None:
+                    await need_persona_first(message)
+                    return
+
                 await message.reply(user_status)
                 return
 
-            if user_status is None or len(user_status) == "":
-                await message.reply(f"Сначала вам нужно создать персонажа с помощью команды 'персона', например:\n"
-                                    f"Персона: Эльф аристократ, искусный лучник\n"
-                                    f"Или\n"
-                                    f"Персона: Яростный хоббит-монах, мастер рукопашного боя\n"
-                                    f"Или\n"
-                                    f"Персона: 'то что вам придет в голову'\n")
+            if user_status is None:
+                await need_persona_first(message)
                 return
 
 
@@ -129,6 +128,16 @@ async def echo_handler(message: Message) -> None:
         return
     except Exception:
         traceback.print_exc()
+
+
+async def need_persona_first(message):
+    await message.reply(f"Сначала вам нужно создать персонажа с помощью команды 'персона', например:\n"
+                        f"Персона: Эльф аристократ, искусный лучник\n"
+                        f"Или\n"
+                        f"Персона: Яростный хоббит-монах, мастер рукопашного боя\n"
+                        f"Или\n"
+                        f"Персона: 'то что вам придет в голову'\n")
+
 
 async def check_for_yes(check_reply):
     test_reply = check_reply.lower().strip(string.punctuation + string.punctuation)
