@@ -74,14 +74,14 @@ async def echo_handler(message: Message) -> None:
             user_status = session.get_user_status()
 
             if maybe_cmd.startswith("статус"):
-                if user_status is None:
+                if user_status is None or len(user_status) == 0:
                     await need_persona_first(message)
                     return
 
                 await message.reply(user_status)
                 return
 
-            if user_status is None:
+            if user_status is None or len(user_status) == 0:
                 await need_persona_first(message)
                 return
 
