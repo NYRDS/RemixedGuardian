@@ -47,6 +47,7 @@ async def echo_handler(message: Message) -> None:
             maybe_cmd = text.strip(string.whitespace + string.punctuation).split()[0]
             maybe_cmd = maybe_cmd.lower()
 
+
             if maybe_cmd.startswith("reset"):
                 reset_session(uid)
                 await message.reply("сессия сброшена")
@@ -55,9 +56,6 @@ async def echo_handler(message: Message) -> None:
             session = ensure_session(uid)
             session.user_text(text, username)
 
-            if maybe_cmd.startswith("статус"):
-                await message.reply(session.get_user_status())
-                return
 
             if maybe_cmd.startswith("персона"):
                 make_persona_prompt = session.make_persona_prompt()
@@ -68,11 +66,17 @@ async def echo_handler(message: Message) -> None:
                     return
 
                 session.user_status(persona_candidate)
+                session.save()
 
                 await message.reply(f"Персона обновлена: {persona_candidate}")
                 return
 
-            user_status = session.user_status(uid)
+            user_status = session.get_user_status()
+
+            if maybe_cmd.startswith("статус"):
+                await message.reply(user_status)
+                return
+
             if user_status is None or len(user_status) == "":
                 await message.reply(f"Сначала вам нужно создать персонажа с помощью команды 'персона', например:\n"
                                     f"Персона: Эльф аристократ, искусный лучник\n"
