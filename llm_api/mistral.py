@@ -4,14 +4,14 @@ from conf import MISTRAL_API_KEY
 
 client = Mistral(api_key=MISTRAL_API_KEY)
 
-def mistral_chat(prompt):
+def mistral_chat(prompt, model="mistral-large-latest"):
 
     if prompt[-1]["role"] == "assistant":
         prompt[-1]["prefix"] = True
 
     chat_response = client.chat.complete(
         messages=prompt,
-        model="mistral-large-latest",
+        model=model,
         max_tokens=1024,
         temperature=1,
         top_p=1,

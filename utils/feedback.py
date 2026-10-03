@@ -129,13 +129,24 @@ def list_recent() -> str:
     return "\n".join(format_entry(r) for r in rows)
 
 
+DRAFT_MODEL = "mistral-small-latest"  # large is not in this key's tier anymore
+
+
 def make_draft(text: str) -> str:
-    return mistral_chat(
-        [
-            {"role": "system", "content": DRAFT_SYSTEM},
-            {"role": "user", "content": text},
-        ]
-    )
+    prompt = [
+        {"role": "system", "content": DRAFT_SYSTEM},
+        {"role": "user", "content": text},
+    ]
+    try:
+        return mistral_chat(prompt, model=DRAFT_MODEL)
+    except Exception as e:
+        # free tier throttles ~1 req/s; one retry usually clears it
+        if "429" in str(e) or "rate" in str(e).lower():
+            import time
+
+            time.sleep(12)
+            return mistral_chat(prompt, model=DRAFT_MODEL)
+        raise
 
 
 async def intake(source: str, author: str, chat_ref: str, text: str) -> int:
