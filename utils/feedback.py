@@ -23,7 +23,6 @@ HELP = (
     "`fb` - latest entries\n"
     "`fb <id>` - entry details\n"
     "`answer <id> <text>` - send the answer to the player\n"
-    "`draft <id>` - (re)generate an LLM answer draft\n"
     "`dismiss <id>` - close without answering"
 )
 
@@ -129,7 +128,11 @@ def list_recent() -> str:
     return "\n".join(format_entry(r) for r in rows)
 
 
-DRAFT_MODEL = "mistral-small-latest"  # large is not in this key's tier anymore
+DRAFT_MODEL = "mistral-small-latest"
+# DORMANT 2026-10-03: mistral-large left the key's tier (403) and the free
+# tier throttles small hard; LLM auto-drafts suspended per operator until a
+# working provider is wired. Answers are composed manually (by the operator
+# or the coding agent) and sent with `answer <id> <text>`.
 
 
 def make_draft(text: str) -> str:
@@ -161,21 +164,17 @@ async def intake(source: str, author: str, chat_ref: str, text: str) -> int:
 
 
 async def _finish_intake(entry_id: int, text: str):
-    try:
-        draft = await asyncio.to_thread(make_draft, text)
-        set_draft(entry_id, draft)
-    except Exception as e:
-        print(f"draft failed for #{entry_id}: {e}")
+    # LLM auto-drafts are dormant (see make_draft note); notify admins with
+    # the raw question so an answer can be composed manually.
     await notify_admins(format_for_admin(get(entry_id)))
 
 
 def format_for_admin(row) -> str:
-    draft = row["draft"] or f"(no draft - use: draft {row['id']})"
     return (
         f"New question #{row['id']} [{row['source']}] from {row['author']}:\n"
         f"{(row['text'] or '')[:800]}\n"
-        f"---\nDraft: {draft[:1200]}\n---\n"
-        f"`answer {row['id']} <text>` to send | `draft {row['id']}` | `dismiss {row['id']}`"
+        f"---\n"
+        f"`answer {row['id']} <text>` to send | `dismiss {row['id']}` | `fb {row['id']}`"
     )
 
 
@@ -228,14 +227,5 @@ async def execute_admin_command(text: str) -> str:
     if cmd == "dismiss" and len(parts) > 1:
         dismiss(int(parts[1]))
         return f"#{parts[1]}: dismissed"
-
-    if cmd == "draft" and len(parts) > 1:
-        entry_id = int(parts[1])
-        row = get(entry_id)
-        if not row:
-            return f"#{entry_id}: not found"
-        draft = await asyncio.to_thread(make_draft, row["text"])
-        set_draft(entry_id, draft)
-        return f"Draft for #{entry_id}:\n{draft}"
 
     return HELP

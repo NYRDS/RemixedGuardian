@@ -13,14 +13,13 @@ Community bots for Remixed Dungeon (NYRDS):
 ## Feedback & Q&A flow
 
 Everything players write to the bots in DMs (plus every Google Play review)
-is stored in `feedback.db` (sqlite). For direct questions a draft answer is
-generated with Mistral and sent to the admins as a Discord DM.
+is stored in `feedback.db` (sqlite). New questions are pushed to the admins
+as a Discord DM.
 
-Drafts are never sent to players automatically. An admin sends an answer
-manually:
+Answers are composed manually and sent with an admin command — LLM
+auto-drafts are suspended (see `utils/feedback.py` make_draft note):
 
     answer <id> <text>    send the answer to the player (same platform)
-    draft <id>            (re)generate the LLM draft
     fb                    latest entries
     fb <id>               entry details
     dismiss <id>          close without answering
