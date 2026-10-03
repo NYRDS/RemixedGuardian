@@ -137,16 +137,17 @@ def make_draft(text: str) -> str:
         {"role": "system", "content": DRAFT_SYSTEM},
         {"role": "user", "content": text},
     ]
-    try:
-        return mistral_chat(prompt, model=DRAFT_MODEL)
-    except Exception as e:
-        # free tier throttles ~1 req/s; one retry usually clears it
-        if "429" in str(e) or "rate" in str(e).lower():
+    # free tier throttles hard; back off patiently, this runs in the background
+    for attempt in range(3):
+        try:
+            return mistral_chat(prompt, model=DRAFT_MODEL)
+        except Exception as e:
+            throttled = "429" in str(e) or "rate" in str(e).lower()
+            if not throttled or attempt == 2:
+                raise
             import time
 
-            time.sleep(12)
-            return mistral_chat(prompt, model=DRAFT_MODEL)
-        raise
+            time.sleep(30 * (attempt + 1))
 
 
 async def intake(source: str, author: str, chat_ref: str, text: str) -> int:
