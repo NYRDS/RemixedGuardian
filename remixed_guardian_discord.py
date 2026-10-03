@@ -18,6 +18,7 @@ from conf import (
 import discord
 from discord.ext import tasks
 
+from utils import feedback
 from utils.google_play import async_publish_fresh_reviews, async_publish_reply
 from utils.repo_monitor import check_repos
 from utils.utils import floodScore
@@ -120,6 +121,12 @@ class RemixedGuardian(discord.Client):
                 await async_publish_reply(message.reference.message_id, message.content)
                 return
 
+        # Direct messages: community feedback / Q&A intake and admin commands.
+        # Runs before moderation so DMs are never struck or deleted.
+        if message.guild is None and not message.author.bot:
+            await self.handle_dm(message)
+            return
+
         if message.author.id in GOOGLE_PLAY_ADMINS:
             return # Admins can post anything
 
@@ -153,6 +160,23 @@ class RemixedGuardian(discord.Client):
 
     async def on_ready(self):
         print(f"Logged in as {self.user} (ID: {self.user.id})")
+
+    async def handle_dm(self, message):
+        if message.author.id in GOOGLE_PLAY_ADMINS:
+            reply = await feedback.execute_admin_command(message.content)
+            await message.reply(reply[:1900])
+            return
+
+        entry_id = await feedback.intake(
+            source="discord",
+            author=message.author.name,
+            chat_ref=str(message.author.id),
+            text=message.content,
+        )
+        await message.reply(
+            f"Thanks! Your message was stored as #{entry_id} and passed to the team.\n"
+            f"Спасибо! Сообщение #{entry_id} передано команде — ответ придёт сюда."
+        )
 
     @tasks.loop(seconds=1200)
     async def reviews_task(self):

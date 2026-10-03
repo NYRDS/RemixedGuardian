@@ -6,6 +6,8 @@ from googleapiclient.discovery import build
 
 from conf import GOOGLE_PLAY_PACKAGE_NAME, GOOGLE_KEY_FILE_LOCATION
 
+from utils import feedback as feedback_store
+
 import shelve
 
 reviews_db = shelve.open("reviews")
@@ -47,6 +49,12 @@ async def async_publish_fresh_reviews(channel=None):
                     reviews_db[review["reviewId"]] = review
                     res = await channel.send(content=text)
                     reviews_db[str(res.id)] = review["reviewId"]
+                    feedback_store.add_entry(
+                        source="gplay",
+                        author=review["authorName"],
+                        chat_ref=review["reviewId"],
+                        text=f"[{stars}*] {review['comments'][0]['userComment']['text']}",
+                    )
                     return
 
     except Exception as e:
@@ -70,6 +78,7 @@ async def async_publish_reply(msg_id, replyMsg: str):
             .execute()
         )
         print(f"{ret}")
+        feedback_store.mark_answered_by_ref(review_id, replyMsg)
 
     else:
         print("Replying to review that doesn't exist")

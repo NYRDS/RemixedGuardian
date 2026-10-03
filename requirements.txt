@@ -2,6 +2,7 @@ discord.py==2.3.2
 emoji==2.8.0
 cerebras-cloud-sdk
 aiogram
+aiohttp
 contractions
 fasttext-langdetect
 pylru
