@@ -179,14 +179,21 @@ def format_for_admin(row) -> str:
 
 
 async def notify_admins(text: str):
-    try:
-        if CHANNEL_FEEDBACK:
-            await notify.discord_channel(CHANNEL_FEEDBACK, text)
-        else:
-            for admin in GOOGLE_PLAY_ADMINS:
-                await notify.discord_dm(admin, text)
-    except Exception as e:
-        print(f"admin notify failed: {e}")
+    # Discord rate-limits DM-channel creation globally (40003); retry once.
+    for attempt in range(2):
+        try:
+            if CHANNEL_FEEDBACK:
+                await notify.discord_channel(CHANNEL_FEEDBACK, text)
+            else:
+                for admin in GOOGLE_PLAY_ADMINS:
+                    await notify.discord_dm(admin, text)
+            return
+        except Exception as e:
+            print(f"admin notify failed (attempt {attempt + 1}): {e}")
+            if attempt == 0:
+                import asyncio as _a
+
+                await _a.sleep(20)
 
 
 async def execute_admin_command(text: str) -> str:
